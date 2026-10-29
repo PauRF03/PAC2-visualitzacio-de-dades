@@ -1,13 +1,32 @@
 <!doctype html>
-<html lang="en">
+<html lang="ca">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Document</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mix elèctric d'Espanya</title>
+    <link rel="stylesheet" href="../shared/style.css" />
     <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
   </head>
-  <body>
-    <div id="chart"></div>
+  <body data-chart="stacked-bar">
+    <main>
+      <a class="back" href="../">← Totes les visualitzacions</a>
+      <header>
+        <span class="tag">Grup I · Barres apilades</span>
+        <h1>Mix elèctric d'Espanya</h1>
+        <p class="subtitle">
+          Pes de cada font de generació en el total mensual, de febrer de 2023 a
+          juliol de 2026.
+        </p>
+      </header>
+
+      <figure>
+        <div
+          id="chart"
+          role="img"
+          aria-label="Gràfic de barres apilades amb el percentatge de cada font de generació elèctrica a Espanya per mes"
+        ></div>
+      </figure>
+    </main>
     <script src="chart.js"></script>
   </body>
 </html>

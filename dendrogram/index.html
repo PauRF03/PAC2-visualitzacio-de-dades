@@ -1,13 +1,41 @@
 <!doctype html>
-<html lang="en">
+<html lang="ca">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Document</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Població d'Espanya per comunitat i província</title>
+    <link rel="stylesheet" href="../shared/style.css" />
     <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
   </head>
-  <body>
-    <div id="chart"></div>
+  <body data-chart="dendrogram">
+    <main>
+      <a class="back" href="../">← Totes les visualitzacions</a>
+      <header>
+        <span class="tag">Grup II · Dendrograma lineal</span>
+        <h1>
+          Com es reparteix la població d'Espanya: comunitats i províncies (2025)
+        </h1>
+        <p class="subtitle">
+          Habitants de cada província agrupats per comunitat autònoma, a 1 de
+          gener de 2025.
+        </p>
+      </header>
+
+      <figure>
+        <div
+          id="chart"
+          role="img"
+          aria-label="Dendrograma lineal d'Espanya, les seves comunitats autònomes i les províncies, amb la població de cada província"
+        ></div>
+      </figure>
+
+      <section class="notes">
+        <p class="source">
+          Font: INE, Principales indicadores provinciales (població a 1 de gener
+          de 2025). Noms tal com els publica l'INE.
+        </p>
+      </section>
+    </main>
     <script src="chart.js"></script>
   </body>
 </html>

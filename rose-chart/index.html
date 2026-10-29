@@ -1,13 +1,51 @@
 <!doctype html>
-<html lang="en">
+<html lang="ca">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Document</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Turisme a Espanya</title>
+    <link rel="stylesheet" href="../shared/style.css" />
     <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
   </head>
-  <body>
-    <div id="chart"></div>
+  <body data-chart="rose-chart">
+    <main>
+      <a class="back" href="../">← Totes les visualitzacions</a>
+      <header>
+        <span class="tag">Grup III · Rose chart</span>
+        <h1>Turisme a Espanya</h1>
+        <p class="subtitle">
+          Visitants internacionals que arriben a Espanya cada mes, en milions.
+        </p>
+      </header>
+
+      <div class="controls">
+        <label for="year">Any</label>
+        <select id="year"></select>
+      </div>
+
+      <figure>
+        <div
+          id="chart"
+          role="img"
+          aria-label="Gràfic de rosa amb les arribades mensuals de turistes i excursionistes internacionals a Espanya"
+        ></div>
+        <ul class="legend">
+          <li><span class="swatch tourists"></span>Turistes (pernocten)</li>
+          <li>
+            <span class="swatch excursionists"></span>Excursionistes (sense
+            pernoctar)
+          </li>
+        </ul>
+      </figure>
+
+      <section class="notes">
+        <p class="source">
+          Font: INE, Estadística de Movimientos Turísticos en Fronteras
+          (FRONTUR), a través de Statista. Turista: visitant no resident que
+          pernocta. Excursionista: visitant que no pernocta.
+        </p>
+      </section>
+    </main>
     <script src="chart.js"></script>
   </body>
 </html>

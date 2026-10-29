@@ -1,280 +1,148 @@
-const DATA_FILE = "data/data.csv";
+const SIZE = 720,
+  INNER = 36,
+  OUTER = 270,
+  LABEL = 298;
+const MAX = 18;
 const DEFAULT_YEAR = 2024;
 
-function ensure(id, tag, parent) {
-  let node = document.getElementById(id);
-  if (!node) {
-    node = document.createElement(tag);
-    node.id = id;
-    parent.appendChild(node);
-  }
-  return node;
-}
-
-const chartDiv = ensure("chart", "div", document.body);
-const insightEl = ensure("insight", "p", document.body);
-let yearSelect = document.getElementById("year");
-if (!yearSelect) {
-  yearSelect = document.createElement("select");
-  yearSelect.id = "year";
-  document.body.insertBefore(yearSelect, chartDiv);
-}
-
-function showError(msg) {
-  chartDiv.insertAdjacentHTML("beforeend", `<p style="color:#c00">${msg}</p>`);
-}
-
-if (typeof d3 === "undefined") {
-  showError(
-    "No s'ha carregat D3. Comprova la connexió i que l'index.html inclogui " +
-      '&lt;script src="https://cdn.jsdelivr.net/npm/d3@7"&gt;&lt;/script&gt; abans de chart.js.',
-  );
-  throw new Error("D3 no està carregat");
-}
-
-const size = 720;
-const innerRadius = 36;
-const outerRadius = 270;
-const labelRadius = 298;
-const maxValue = 18;
-
-const rootStyle = getComputedStyle(document.documentElement);
-const cssVar = (name, fallback) =>
-  rootStyle.getPropertyValue(name).trim() || fallback;
-
-const COLORS = {
-  tourists: cssVar("--tourists", "#b23a1f"),
-  excursionists: cssVar("--excursionists", "#f0b27a"),
-  grid: cssVar("--grid", "#d9dee4"),
-  text: cssVar("--text", "#1f2933"),
-  muted: cssVar("--muted", "#5f6c7b"),
-};
-
-const fmt1 = new Intl.NumberFormat("ca", {
+const dec = new Intl.NumberFormat("ca", {
   minimumFractionDigits: 1,
   maximumFractionDigits: 1,
 });
-const fmt0 = new Intl.NumberFormat("ca", { maximumFractionDigits: 0 });
+const int = new Intl.NumberFormat("ca", { maximumFractionDigits: 0 });
+
+const chart = d3.select("#chart");
+if (d3.select("#year").empty()) {
+  chart.insert("label", "*").attr("for", "year").text("Any: ");
+  chart.insert("select", "svg").attr("id", "year");
+}
+if (d3.select("#insight").empty()) chart.append("p").attr("id", "insight");
 
 const svg = d3
-  .select(chartDiv)
+  .select("#chart")
   .append("svg")
-  .attr("viewBox", [-size / 2, -size / 2, size, size])
-  .attr("width", "100%")
-  .style("display", "block")
-  .style("max-width", "720px")
-  .style("margin", "0 auto")
-  .style(
-    "font-family",
-    "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
-  );
+  .attr("viewBox", [-SIZE / 2, -SIZE / 2, SIZE, SIZE]);
 
-function polar(angle, radius) {
-  // angle 0 = dalt, sentit horari
-  return [Math.sin(angle) * radius, -Math.cos(angle) * radius];
-}
-
-const mesos = {
-  Jan: [1, "Gener"],
-  Feb: [2, "Febrer"],
-  Mar: [3, "Març"],
-  Apr: [4, "Abril"],
-  May: [5, "Maig"],
-  Jun: [6, "Juny"],
-  Jul: [7, "Juliol"],
-  Aug: [8, "Agost"],
-  Sep: [9, "Setembre"],
-  Oct: [10, "Octubre"],
-  Nov: [11, "Novembre"],
-  Dec: [12, "Desembre"],
-};
-
-function parseRows(raw) {
-  const labelCol = raw.columns[0];
-  return raw.map((d) => {
-    const m = String(d[labelCol])
-      .trim()
-      .match(/^([A-Za-z]{3})\W*(\d{2}|\d{4})$/);
-    if (!m || !mesos[m[1]])
-      throw new Error(`Etiqueta de mes no reconeguda: "${d[labelCol]}"`);
-    return {
-      any: m[2].length === 2 ? 2000 + +m[2] : +m[2],
-      mes_num: mesos[m[1]][0],
-      mes: mesos[m[1]][1],
-      turistes_milers: +d.Tourists,
-      excursionistes_milers: +d.Excursionists,
-    };
-  });
+function parse(d) {
+  const label = Object.values(d)[0];
+  const [mon, yy] = label.split(" '");
+  return {
+    year: 2000 + +yy,
+    label: mon,
+    t: d.Tourists / 1000,
+    e: d.Excursionists / 1000,
+  };
 }
 
 function draw(rows, year) {
   svg.selectAll("*").remove();
+  const data = rows.filter((d) => d.year === year).map((d, m) => ({ ...d, m }));
 
-  const data = rows
-    .filter((d) => d.any === year)
-    .map((d) => ({
-      num: d.mes_num,
-      mes: d.mes,
-      turistes: d.turistes_milers / 1000,
-      excursionistes: d.excursionistes_milers / 1000,
-      total: (d.turistes_milers + d.excursionistes_milers) / 1000,
-    }));
-
-  const x = d3
-    .scaleBand()
-    .domain(data.map((d) => d.num))
-    .range([0, 2 * Math.PI])
-    .align(0);
-
-  const y = d3
-    .scaleRadial()
-    .domain([0, maxValue])
-    .range([innerRadius, outerRadius]);
+  const x = d3.scaleBand(d3.range(12), [0, 2 * Math.PI]);
+  const y = d3.scaleRadial([0, MAX], [INNER, OUTER]);
+  const at = (m, r) => {
+    const a = x(m) + x.bandwidth() / 2;
+    return `translate(${Math.sin(a) * r},${-Math.cos(a) * r})`;
+  };
 
   const ticks = [5, 10, 15];
   svg
     .append("g")
     .attr("fill", "none")
-    .attr("stroke", COLORS.grid)
+    .style("stroke", "var(--grid, #d9dee4)")
     .selectAll("circle")
     .data(ticks)
     .join("circle")
-    .attr("r", (d) => y(d));
-
-  const segments = data.flatMap((d) => [
-    { d, tipus: "Turistes", y0: 0, y1: d.turistes, color: COLORS.tourists },
-    {
-      d,
-      tipus: "Excursionistes",
-      y0: d.turistes,
-      y1: d.total,
-      color: COLORS.excursionists,
-    },
-  ]);
-
-  const arc = d3
-    .arc()
-    .innerRadius((s) => y(s.y0))
-    .outerRadius((s) => y(s.y1))
-    .startAngle((s) => x(s.d.num))
-    .endAngle((s) => x(s.d.num) + x.bandwidth())
-    .padAngle(0.012)
-    .padRadius(innerRadius);
-
-  svg
-    .append("g")
-    .selectAll("path")
-    .data(segments)
-    .join("path")
-    .attr("d", arc)
-    .attr("fill", (s) => s.color)
-    .append("title")
-    .text(
-      (s) =>
-        `${s.d.mes} ${year} · ${s.tipus}: ${fmt1.format(s.y1 - s.y0)} milions (total del mes: ${fmt1.format(s.d.total)})`,
-    );
-
+    .attr("r", y);
   svg
     .append("g")
     .attr("font-size", 11)
-    .attr("fill", COLORS.muted)
     .attr("text-anchor", "middle")
+    .style("fill", "var(--muted, #5f6c7b)")
     .selectAll("text")
     .data(ticks)
     .join("text")
     .attr("y", (d) => -y(d) - 3)
     .text((d) => `${d} M`);
 
+  const arc = d3
+    .arc()
+    .innerRadius((s) => y(s.from))
+    .outerRadius((s) => y(s.to))
+    .startAngle((s) => x(s.d.m))
+    .endAngle((s) => x(s.d.m) + x.bandwidth())
+    .padAngle(0.012)
+    .padRadius(INNER);
+  const segments = data.flatMap((d) => [
+    { d, name: "Tourists", from: 0, to: d.t, fill: "var(--tourists, #b23a1f)" },
+    {
+      d,
+      name: "Excursionists",
+      from: d.t,
+      to: d.t + d.e,
+      fill: "var(--excursionists, #f0b27a)",
+    },
+  ]);
   svg
     .append("g")
-    .attr("font-size", 12)
-    .attr("font-weight", 600)
-    .attr("fill", COLORS.text)
-    .attr("text-anchor", "middle")
-    .selectAll("text")
-    .data(data)
-    .join("text")
-    .attr("transform", (d) => {
-      const [px, py] = polar(x(d.num) + x.bandwidth() / 2, y(d.total) + 11);
-      return `translate(${px},${py})`;
-    })
-    .attr("dy", "0.32em")
-    .text((d) => fmt1.format(d.total));
+    .selectAll("path")
+    .data(segments)
+    .join("path")
+    .attr("d", arc)
+    .style("fill", (s) => s.fill)
+    .append("title")
+    .text(
+      (s) =>
+        `${s.d.label} '${String(year).slice(2)} · ${s.name}: ${dec.format(s.to - s.from)} milions`,
+    );
 
-  // Noms dels mesos
-  svg
-    .append("g")
-    .attr("font-size", 13)
-    .attr("fill", COLORS.text)
-    .attr("text-anchor", "middle")
-    .selectAll("text")
-    .data(data)
-    .join("text")
-    .attr("transform", (d) => {
-      const [px, py] = polar(x(d.num) + x.bandwidth() / 2, labelRadius);
-      return `translate(${px},${py})`;
-    })
-    .attr("dy", "0.32em")
-    .text((d) => d.mes);
-
-  // Llegenda dins del SVG (només si la pàgina no en porta una)
-  if (!document.querySelector(".legend")) {
-    const legend = svg
+  const labels = (pos, text, weight) =>
+    svg
       .append("g")
       .attr("font-size", 13)
-      .attr("fill", COLORS.text)
-      .attr("transform", `translate(${-size / 2 + 12},${size / 2 - 44})`);
-    [
-      ["Turistes", COLORS.tourists],
-      ["Excursionistes", COLORS.excursionists],
-    ].forEach(([nom, color], i) => {
-      const g = legend.append("g").attr("transform", `translate(0,${i * 20})`);
-      g.append("rect")
-        .attr("width", 12)
-        .attr("height", 12)
-        .attr("rx", 2)
-        .attr("fill", color);
-      g.append("text").attr("x", 18).attr("y", 10).text(nom);
-    });
-  }
-}
-
-function start(rows) {
-  const years = Array.from(new Set(rows.map((d) => d.any))).sort(d3.ascending);
-  yearSelect.innerHTML = "";
-  years.forEach((y) => {
-    const opt = document.createElement("option");
-    opt.value = y;
-    opt.textContent = y;
-    if (y === DEFAULT_YEAR) opt.selected = true;
-    yearSelect.appendChild(opt);
-  });
-  yearSelect.addEventListener("change", () => draw(rows, +yearSelect.value));
-  draw(
-    rows,
-    years.includes(DEFAULT_YEAR) ? DEFAULT_YEAR : years[years.length - 1],
+      .attr("font-weight", weight)
+      .attr("text-anchor", "middle")
+      .style("fill", "var(--text, #1f2933)")
+      .selectAll("text")
+      .data(data)
+      .join("text")
+      .attr("transform", pos)
+      .attr("dy", "0.32em")
+      .text(text);
+  labels(
+    (d) => at(d.m, y(d.t + d.e) + 11),
+    (d) => dec.format(d.t + d.e),
+    600,
+  );
+  labels(
+    (d) => at(d.m, LABEL),
+    (d) => d.label,
+    400,
   );
 }
 
-d3.csv(DATA_FILE)
+d3.csv("data/data.csv")
   .then((raw) => {
-    if (
-      !raw.columns.includes("Tourists") ||
-      !raw.columns.includes("Excursionists")
-    ) {
-      throw new Error(
-        `El fitxer ${DATA_FILE} no té les columnes Tourists i Excursionists`,
-      );
-    }
-    return raw;
+    const rows = raw.map(parse);
+    const years = [...new Set(rows.map((d) => d.year))];
+
+    d3.select("#year")
+      .selectAll("option")
+      .data(years)
+      .join("option")
+      .attr("value", (d) => d)
+      .property("selected", (d) => d === DEFAULT_YEAR)
+      .text((d) => d);
+    d3.select("#year").on("change", (event) => draw(rows, +event.target.value));
+
+    draw(rows, DEFAULT_YEAR);
   })
   .catch((err) => {
-    console.warn(
-      `No s'ha pogut usar ${DATA_FILE} (${err.message}). S'usen les dades incorporades.`,
-    );
-    return d3.csvParse(FALLBACK_CSV);
-  })
-  .then((raw) => start(parseRows(raw)))
-  .catch((err) =>
-    showError(`No s'ha pogut dibuixar el gràfic: ${err.message}`),
-  );
+    document
+      .getElementById("chart")
+      .insertAdjacentHTML(
+        "beforeend",
+        `<p style="color:#c00">No s'han pogut carregar les dades: ${err.message}. ` +
+          `Obre la pàgina amb un servidor local (per exemple, Live Server de VS Code).</p>`,
+      );
+  });
